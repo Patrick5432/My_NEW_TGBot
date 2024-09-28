@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "khVRTh9t/Vw=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\maxx5\\OneDrive\\Рабочий стол\\NewTGBot\\NewTGBot.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\maxx5\\.nuget\\packages\\newtonsoft.json\\13.0.1\\newtonsoft.json.13.0.1.nupkg.sha512",
+    "C:\\Users\\maxx5\\.nuget\\packages\\telegram.bot\\19.0.0\\telegram.bot.19.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
