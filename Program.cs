@@ -1,17 +1,24 @@
-﻿using Telegram.Bot;
+﻿using Microsoft.VisualBasic;
+using MongoDB.Driver;
+using NewTGBot;
+using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 class Program
 {
     private static string token = "7784841400:AAFjbVgO1xB9Vv3kN5ZSDMF6pPlJVP_Wjw0";
     private static ITelegramBotClient ? bot;
     private static ReceiverOptions? receiverOptions;
-
+    private static InlineKeyboardMarkup? question;
+    private static InlineKeyboardMarkup? getAdmin;
+    private static MongoConnection? connection = new MongoConnection();
     public static async Task Main(string[] args)
     {
+        connection.MongoUpdate();
         bot = new TelegramBotClient(token);
         receiverOptions = new ReceiverOptions
         {
@@ -22,6 +29,13 @@ class Program
             },
             ThrowPendingUpdates = true,
         };
+
+        question = new InlineKeyboardMarkup(
+            new List<InlineKeyboardButton>
+            {
+                InlineKeyboardButton.WithCallbackData("Да", "yes"),
+                InlineKeyboardButton.WithCallbackData("Нет", "no"),
+            });
 
         using var cts = new CancellationTokenSource();
         bot.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions, cts.Token);
@@ -48,13 +62,45 @@ class Program
                                 {
                                     if (message.Text == "/start")
                                     {
-                                        //======================= ПРИ НАПИСАНИИ КОМАНДЫ ДОБАВИТЬ ПРОВЕРКУ НА АДМИНА =======================
                                         Message msg = await bot.SendTextMessageAsync(chat.Id, "Привет");
-                                        bot.EditMessageTextAsync(chat.Id, msg.MessageId,"Пока");
+                                        bool check = await connection.CheckAdmins();
+                                        if (check != true)
+                                        {
+                                           await bot.SendTextMessageAsync(chat.Id, "На данный момент у меня нет администратора");
+                                           msg = await bot.SendTextMessageAsync(chat.Id, "Хотите стать администратором?", replyMarkup: question);
+                                        }
                                         return;
                                     }
                                     return;
                                 }
+                        }
+                        return;
+                    }
+                case UpdateType.CallbackQuery:
+                    {
+                        var callbackQuery = update.CallbackQuery;
+                        var user = callbackQuery.From;
+                        var chat = callbackQuery.Message.Chat;
+                        switch(callbackQuery.Data)
+                        {
+                            case "yes":
+                                bool check = await connection.CheckAdmins();
+                                if (check != true)
+                                {
+                                    await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                    await connection.GetAdmin(user.Username, user.Id);
+                                    await bot.SendTextMessageAsync(chat.Id, "Вы стали администратором");
+                                }
+                                else
+                                {
+                                    await bot.SendTextMessageAsync(chat.Id, "Администратор уже есть.");
+                                }
+                                
+                                break;
+                            case "no":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                await bot.SendTextMessageAsync(chat.Id, "Ожидайте когда появиться администратор");
+                                break;
                         }
                         return;
                     }
