@@ -1,6 +1,8 @@
 ﻿using Microsoft.VisualBasic;
 using MongoDB.Driver;
 using NewTGBot;
+using Newtonsoft.Json.Linq;
+using System.Security.Cryptography.X509Certificates;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -12,10 +14,10 @@ class Program
 {
     private static string token = "7784841400:AAFjbVgO1xB9Vv3kN5ZSDMF6pPlJVP_Wjw0";
     private static ITelegramBotClient ? bot;
-    private static ReceiverOptions? receiverOptions;
-    private static InlineKeyboardMarkup? question;
-    private static InlineKeyboardMarkup? getAdmin;
-    private static MongoConnection? connection = new MongoConnection();
+    private static ReceiverOptions ? receiverOptions;
+    private static InlineKeyboardMarkup ? question;
+    private static InlineKeyboardMarkup ? adminPanel;
+    private static MongoConnection ? connection = new MongoConnection();
     public static async Task Main(string[] args)
     {
         connection.MongoUpdate();
@@ -36,6 +38,18 @@ class Program
                 InlineKeyboardButton.WithCallbackData("Да", "yes"),
                 InlineKeyboardButton.WithCallbackData("Нет", "no"),
             });
+        adminPanel = new InlineKeyboardMarkup(new List<InlineKeyboardButton[]>
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Создать розыгрыш", "create_raffle"),
+            },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Добавить админа", "add_admin"),
+                InlineKeyboardButton.WithCallbackData("Удалить админа", "delete_admin"),
+            }
+        });
 
         using var cts = new CancellationTokenSource();
         bot.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions, cts.Token);
@@ -53,6 +67,8 @@ class Program
                 case UpdateType.Message:
                     {
                         var message = update.Message;
+                        var text = message.Text;
+                        Console.WriteLine(text);
                         var user = message.From;
                         Console.WriteLine($"Пришло сообщение от пользователя {user.Username} с Id: {user.Id}");
                         var chat = message.Chat;
@@ -64,10 +80,15 @@ class Program
                                     {
                                         Message msg = await bot.SendTextMessageAsync(chat.Id, "Привет");
                                         bool check = await connection.CheckAdmins();
+                                        bool isAdmin = await connection.CheckListAdmin(user.Id);
                                         if (check != true)
                                         {
-                                           await bot.SendTextMessageAsync(chat.Id, "На данный момент у меня нет администратора");
-                                           msg = await bot.SendTextMessageAsync(chat.Id, "Хотите стать администратором?", replyMarkup: question);
+                                            await bot.SendTextMessageAsync(chat.Id, "На данный момент у меня нет администратора");
+                                            msg = await bot.SendTextMessageAsync(chat.Id, "Хотите стать администратором?", replyMarkup: question);
+                                        }
+                                        else if (isAdmin == true)
+                                        {
+                                            await bot.SendTextMessageAsync(chat.Id, "Меню администратора:", replyMarkup: adminPanel);
                                         }
                                         return;
                                     }
@@ -100,6 +121,10 @@ class Program
                             case "no":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 await bot.SendTextMessageAsync(chat.Id, "Ожидайте когда появиться администратор");
+                                break;
+                            case "add_admin":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+
                                 break;
                         }
                         return;
