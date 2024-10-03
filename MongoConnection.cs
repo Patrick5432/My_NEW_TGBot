@@ -32,16 +32,16 @@ namespace NewTGBot
             users.InsertOne(user);
         }
 
-        public async Task GetAdmin(string userName, long userId)
+        public async Task GetAdmin(long userId)
         {
-            Admins admin = new Admins(userName: userName, userId: userId);
+            Admins admin = new Admins(userId: userId);
             var admins = db.GetCollection<Admins>("admins");
             admins.InsertOne(admin);
         }
 
         public async Task<bool> CheckListAdmin(long userId)
         {
-            Console.WriteLine(userId);
+            //Console.WriteLine(userId);
             db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<Admins>("admins");
             using var cursor = await collection.FindAsync(new BsonDocument());
@@ -101,12 +101,10 @@ namespace NewTGBot
         public class Admins
         {
             public ObjectId Id { get; set; }
-            public string UserName { get; set; }
             public long UserId { get; set; }
 
-            public Admins(string userName, long userId)
+            public Admins(long userId)
             {
-                UserName = userName;
                 UserId = userId;
             }
         }

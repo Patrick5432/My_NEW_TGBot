@@ -2,6 +2,7 @@
 using MongoDB.Driver;
 using NewTGBot;
 using Newtonsoft.Json.Linq;
+using System.IO.Pipes;
 using System.Security.Cryptography.X509Certificates;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -17,6 +18,7 @@ class Program
     private static ReceiverOptions ? receiverOptions;
     private static InlineKeyboardMarkup ? question;
     private static InlineKeyboardMarkup ? adminPanel;
+    private static bool waitingAnswerUser = false;
     private static MongoConnection ? connection = new MongoConnection();
     public static async Task Main(string[] args)
     {
@@ -68,10 +70,29 @@ class Program
                     {
                         var message = update.Message;
                         var text = message.Text;
-                        Console.WriteLine(text);
+                        var chat = message.Chat;
+                        //Console.WriteLine(text);
                         var user = message.From;
                         Console.WriteLine($"Пришло сообщение от пользователя {user.Username} с Id: {user.Id}");
-                        var chat = message.Chat;
+                        if (waitingAnswerUser)
+                        {
+                            bool checkAdmin = await connection.CheckListAdmin(user.Id);
+                            if (checkAdmin)
+                            {
+                                long answerUser = await GetAnswerUser(update);
+                                if (answerUser != 0)
+                                {
+                                    await connection.GetAdmin(answerUser);
+                                    await bot.SendTextMessageAsync(chat.Id, "Добавлен новый админ.");
+                                    waitingAnswerUser = false;
+                                }
+                                else
+                                {
+                                    await bot.SendTextMessageAsync(chat.Id, "Id не было введено!");
+                                    waitingAnswerUser = false;
+                                }
+                            }
+                        }
                         switch (message.Type)
                         {
                             case MessageType.Text:
@@ -109,7 +130,7 @@ class Program
                                 if (check != true)
                                 {
                                     await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
-                                    await connection.GetAdmin(user.Username, user.Id);
+                                    await connection.GetAdmin(user.Id);
                                     await bot.SendTextMessageAsync(chat.Id, "Вы стали администратором");
                                 }
                                 else
@@ -124,7 +145,8 @@ class Program
                                 break;
                             case "add_admin":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
-
+                                await bot.SendTextMessageAsync(chat.Id, "Введите Id пользователя");
+                                waitingAnswerUser = true;
                                 break;
                         }
                         return;
@@ -136,6 +158,22 @@ class Program
         {
             Console.WriteLine(ex.ToString());
         }
+    }
+
+
+    public static async Task<long> GetAnswerUser(Update update)
+    {
+        var message = update.Message;
+        var user = message.From;
+        var chat = message.Chat;
+        var text = message.Text;
+        long answer;
+        if (long.TryParse(text, out answer))
+        {
+            return answer;
+        }
+
+        return 0;
     }
 
     private static Task ErrorHandler(ITelegramBotClient botClient, Exception error, CancellationToken cancellationToken)
