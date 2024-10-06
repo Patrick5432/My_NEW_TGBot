@@ -21,6 +21,9 @@ class Program
     private static bool waitingAnswerUser = false;
     private static bool getAdmin = false;
     private static bool deleteAdmin = false;
+    private static bool createRaffle = false;
+    private static int count = 0;
+    private static string[] raffleNames = new string[2];
     private static MongoConnection ? connection = new MongoConnection();
     public static async Task Main(string[] args)
     {
@@ -119,8 +122,27 @@ class Program
                                 getAdmin = false;
                                 deleteAdmin = false;
                             }
-                            
-                            
+                        }
+                        if (createRaffle)
+                        {
+                            Console.WriteLine("Проверка работы условия");
+                            switch (count)
+                            {
+                                case 0:
+                                    await bot.SendTextMessageAsync(chat.Id, "Введите описание розыгрыша:");
+                                    raffleNames[count] = text;
+                                    break;
+                                case 1:
+                                    raffleNames[count] = text;
+                                    long id = await connection.SetIdRaffle();
+                                    await connection.GetRaffle(id, "Проводится", raffleNames[0], raffleNames[1]);
+                                    await bot.SendTextMessageAsync(chat.Id, "Розыгрыш создан!");
+                                    Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
+                                    count = 0;
+                                    createRaffle = false;
+                                    break;
+                            }
+                            count++;
                         }
                         switch (message.Type)
                         {
@@ -131,6 +153,11 @@ class Program
                                         Message msg = await bot.SendTextMessageAsync(chat.Id, "Привет");
                                         bool check = await connection.CheckAdmins();
                                         bool isAdmin = await connection.CheckListAdmin(user.Id);
+                                        long checkRaffle = await connection.SetIdRaffle();
+                                        if (checkRaffle == 0)
+                                        {
+                                            await bot.SendTextMessageAsync(chat.Id, "На данный момент нету проводимых розыгрышей.");
+                                        }
                                         if (check != true)
                                         {
                                             await bot.SendTextMessageAsync(chat.Id, "На данный момент у меня нет администратора");
@@ -140,6 +167,7 @@ class Program
                                         {
                                             await bot.SendTextMessageAsync(chat.Id, "Меню администратора:", replyMarkup: adminPanel);
                                         }
+                                        
                                         return;
                                     }
                                     return;
@@ -152,6 +180,7 @@ class Program
                         var callbackQuery = update.CallbackQuery;
                         var user = callbackQuery.From;
                         var chat = callbackQuery.Message.Chat;
+                        bool checkAdmin = await connection.CheckAdmins();
                         switch(callbackQuery.Data)
                         {
                             case "yes":
@@ -172,6 +201,13 @@ class Program
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 await bot.SendTextMessageAsync(chat.Id, "Ожидайте когда появиться администратор");
                                 break;
+                            case "create_raffle":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                //====================================ПИСАТЬ ЗДЕСЬ======================================
+                                Console.WriteLine($"{user.Username} создаёт розыгрыш");
+                                await bot.SendTextMessageAsync(chat.Id, "Введите название розыгрыша:");
+                                createRaffle = true;
+                                break;
                             case "add_admin":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 await bot.SendTextMessageAsync(chat.Id, "Введите Id пользователя");
@@ -180,7 +216,7 @@ class Program
                                 break;
                             case "delete_admin":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
-                                string listAdmin = await connection.ToListAdins();
+                                string listAdmin = await connection.ToListAdmins();
                                 await bot.SendTextMessageAsync(chat.Id, $"Введите Id пользователя, которого хотите удалить:\n{listAdmin}" );
                                 waitingAnswerUser = true;
                                 deleteAdmin = true;

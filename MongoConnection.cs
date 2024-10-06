@@ -17,21 +17,14 @@ namespace NewTGBot
         public async Task MongoUpdate()
         {
             Console.WriteLine("База данных работает");
+            await SetIdRaffle();
             db = client.GetDatabase("telegram_bot");
             await db.CreateCollectionAsync("users");
             await db.CreateCollectionAsync("admins");
             await db.CreateCollectionAsync("raffles");
             await db.CreateCollectionAsync("users_in_raffle");
         }
-
-        public async Task GetUser(string userName, string firstName, string lastName, long idUser)
-        {
-
-            Users user = new Users(userName: userName, firstName: firstName, lastName: lastName, idUser: idUser);
-            var users = db.GetCollection<Users>("users");
-            users.InsertOne(user);
-        }
-
+        //======================АДМИН======================
         public async Task GetAdmin(long userId)
         {
             Admins admin = new Admins(userId: userId);
@@ -68,7 +61,7 @@ namespace NewTGBot
             Console.WriteLine($"Удалён админ с Id {userId}");
         }
 
-        public async Task<string> ToListAdins()
+        public async Task<string> ToListAdmins()
         {
             db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<Admins>("admins");
@@ -100,12 +93,82 @@ namespace NewTGBot
             return false;
         }
 
-        public async Task GetRaffle(string status, string name, string description, string userRaffle)
+        public class Admins
         {
-            Raffle raffle = new Raffle(status: status, name: name, description: description, userRaffle: userRaffle);
+            public ObjectId Id { get; set; }
+            public long UserId { get; set; }
+
+            public Admins(long userId)
+            {
+                UserId = userId;
+            }
+        }
+
+        //======================КОНЕЦ-АДМИН======================
+
+
+        //======================Розыгрыши======================
+
+        public async Task GetRaffle(long id, string status, string name, string description)
+        {
+            Raffle raffle = new Raffle(id: id, status: status, name: name, description: description);
             var raffles = db.GetCollection<Raffle>("raffles");
             raffles.InsertOne(raffle);
         }
+
+        public async Task<long> SetIdRaffle()
+        {
+            db = client.GetDatabase("telegram_bot");
+            var collections = db.GetCollection<Raffle>("raffles");
+            long count = await collections.CountDocumentsAsync(new BsonDocument());
+            if (count < 1)
+            {
+                return 0;
+            }
+            else if (count == 1)
+            {
+                return 1;
+            }
+            else
+            {
+                long id = count;
+                return id;
+            }
+            
+        }
+
+        public class Raffle
+        {
+            public long Id { get; set; }
+            public string Status { get; set; }
+            public string Name { get; set; }
+            public string Description { get; set; }
+
+            public Raffle(long id, string status, string name, string description)
+            {
+                Id = id;
+                Status = status;
+                Name = name;
+                Description = description;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+        /*public async Task GetUser(string userName, string firstName, string lastName, long idUser)
+        {
+
+            Users user = new Users(userName: userName, firstName: firstName, lastName: lastName, idUser: idUser);
+            var users = db.GetCollection<Users>("users");
+            users.InsertOne(user);
+        }*/
 
         public class Users
         {
@@ -124,33 +187,9 @@ namespace NewTGBot
             }
         }
 
-        public class Admins
-        {
-            public ObjectId Id { get; set; }
-            public long UserId { get; set; }
+        
 
-            public Admins(long userId)
-            {
-                UserId = userId;
-            }
-        }
-
-        public class Raffle
-        {
-            public ObjectId Id { get; set; }
-            public string Status { get; set; }
-            public string Name { get; set; }
-            public string Description { get; set; }
-            public string UsersInRaffle { get; set; }
-
-            public Raffle(string status, string name, string description, string userRaffle)
-            {
-                Status = status;
-                Name = name;
-                Description = description;
-                UsersInRaffle = userRaffle;
-            }
-        }
+        
 
 
         public class UsersInRaffle
