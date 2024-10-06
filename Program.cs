@@ -151,6 +151,8 @@ class Program
                                     if (message.Text == "/start")
                                     {
                                         Message msg = await bot.SendTextMessageAsync(chat.Id, "Привет");
+                                        InlineKeyboardMarkup buttonsRaffles = await connection.GetButtonsRaffle();
+                                        await bot.SendTextMessageAsync(chat.Id, "Выберите розыгрыш", replyMarkup: buttonsRaffles);
                                         bool check = await connection.CheckAdmins();
                                         bool isAdmin = await connection.CheckListAdmin(user.Id);
                                         long checkRaffle = await connection.SetIdRaffle();
@@ -206,6 +208,7 @@ class Program
                                 //====================================ПИСАТЬ ЗДЕСЬ======================================
                                 Console.WriteLine($"{user.Username} создаёт розыгрыш");
                                 await bot.SendTextMessageAsync(chat.Id, "Введите название розыгрыша:");
+                                count = 0;
                                 createRaffle = true;
                                 break;
                             case "add_admin":

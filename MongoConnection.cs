@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace NewTGBot
 {
@@ -17,6 +18,8 @@ namespace NewTGBot
         public async Task MongoUpdate()
         {
             Console.WriteLine("База данных работает");
+            await GetArrayIdRaffles();
+            await GetArrayNamesRaffles();
             await SetIdRaffle();
             db = client.GetDatabase("telegram_bot");
             await db.CreateCollectionAsync("users");
@@ -24,7 +27,7 @@ namespace NewTGBot
             await db.CreateCollectionAsync("raffles");
             await db.CreateCollectionAsync("users_in_raffle");
         }
-        //======================АДМИН======================
+
         public async Task GetAdmin(long userId)
         {
             Admins admin = new Admins(userId: userId);
@@ -104,11 +107,6 @@ namespace NewTGBot
             }
         }
 
-        //======================КОНЕЦ-АДМИН======================
-
-
-        //======================Розыгрыши======================
-
         public async Task GetRaffle(long id, string status, string name, string description)
         {
             Raffle raffle = new Raffle(id: id, status: status, name: name, description: description);
@@ -137,6 +135,60 @@ namespace NewTGBot
             
         }
 
+        public async Task<List<string>> GetArrayIdRaffles()
+        {
+            List<string> stringId = new List<string>();
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+            List<Raffle> raffles = await collection.Find(new BsonDocument()).ToListAsync();
+
+            foreach (var raffle in raffles)
+            {
+                string strId = raffle.Id.ToString();
+                stringId.Add(strId);
+            }
+
+            Console.WriteLine(stringId[0]);
+            return stringId;
+        }
+
+        public async Task<List<string>> GetArrayNamesRaffles()
+        {
+            List<string> stringNames = new List<string>();
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+            List<Raffle> raffles = await collection.Find(new BsonDocument()).ToListAsync();
+
+            foreach (var raffle in raffles)
+            {
+                string strName = raffle.Name.ToString();
+                stringNames.Add(strName);
+            }
+
+            Console.WriteLine(stringNames[0]);
+            return stringNames;
+        }
+
+        public async Task<InlineKeyboardMarkup> GetButtonsRaffle()
+        {
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+            List<Raffle> raffles = await collection.Find(new BsonDocument()).ToListAsync();
+            var inlineKeyboard = new List<List<InlineKeyboardButton>>();
+            List<string> strId = await GetArrayIdRaffles();
+            List<string> strNames = await GetArrayNamesRaffles();
+            int count = Math.Min(raffles.Count, Math.Min(strId.Count, strNames.Count));
+
+            for (int i = 0; i < count; i++)
+            {
+                var button = InlineKeyboardButton.WithCallbackData($"Розыгрыш: {strNames[i]}", strId[i]);
+                inlineKeyboard.Add(new List<InlineKeyboardButton> { button });
+            }
+
+            return new InlineKeyboardMarkup(inlineKeyboard);
+        }
+
+
         public class Raffle
         {
             public long Id { get; set; }
@@ -152,23 +204,6 @@ namespace NewTGBot
                 Description = description;
             }
         }
-
-
-
-
-
-
-
-
-
-
-        /*public async Task GetUser(string userName, string firstName, string lastName, long idUser)
-        {
-
-            Users user = new Users(userName: userName, firstName: firstName, lastName: lastName, idUser: idUser);
-            var users = db.GetCollection<Users>("users");
-            users.InsertOne(user);
-        }*/
 
         public class Users
         {
