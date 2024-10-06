@@ -19,6 +19,8 @@ class Program
     private static InlineKeyboardMarkup ? question;
     private static InlineKeyboardMarkup ? adminPanel;
     private static bool waitingAnswerUser = false;
+    private static bool getAdmin = false;
+    private static bool deleteAdmin = false;
     private static MongoConnection ? connection = new MongoConnection();
     public static async Task Main(string[] args)
     {
@@ -79,19 +81,46 @@ class Program
                             bool checkAdmin = await connection.CheckListAdmin(user.Id);
                             if (checkAdmin)
                             {
-                                long answerUser = await GetAnswerUser(update);
-                                if (answerUser != 0)
+                                if (getAdmin)
                                 {
-                                    await connection.GetAdmin(answerUser);
-                                    await bot.SendTextMessageAsync(chat.Id, "Добавлен новый админ.");
-                                    waitingAnswerUser = false;
+                                    long answerUser = await GetAnswerUser(update);
+                                    Console.WriteLine(answerUser);
+                                    if (answerUser == 2)
+                                    {
+                                        await bot.SendTextMessageAsync(chat.Id, "Этот пользователь уже администратор!");
+                                        waitingAnswerUser = false;
+                                    }
+                                    else if (answerUser != 0)
+                                    {
+                                        await connection.GetAdmin(answerUser);
+                                        await bot.SendTextMessageAsync(chat.Id, "Добавлен новый админ.");
+                                        waitingAnswerUser = false;
+                                    }
+                                    else
+                                    {
+                                        await bot.SendTextMessageAsync(chat.Id, "Id не было введено!");
+                                        waitingAnswerUser = false;
+                                    }
                                 }
-                                else
+                                if (deleteAdmin)
                                 {
-                                    await bot.SendTextMessageAsync(chat.Id, "Id не было введено!");
-                                    waitingAnswerUser = false;
+                                    long answerUser = await DeleteAdminAnswerUser(update);
+                                    if (answerUser != 0)
+                                    {
+                                        await connection.DeleteAdmin(answerUser);
+                                        await bot.SendTextMessageAsync(chat.Id, $"Пользователь с Id {answerUser} удалён из базы данных");
+                                    }
+                                    else
+                                    {
+                                        await bot.SendTextMessageAsync(chat.Id, "Id не было введено!");
+                                        waitingAnswerUser = false;
+                                    }
                                 }
+                                getAdmin = false;
+                                deleteAdmin = false;
                             }
+                            
+                            
                         }
                         switch (message.Type)
                         {
@@ -135,7 +164,7 @@ class Program
                                 }
                                 else
                                 {
-                                    await bot.SendTextMessageAsync(chat.Id, "Администратор уже есть.");
+                                    await bot.SendTextMessageAsync(chat.Id, "Администратор уже есть");
                                 }
                                 
                                 break;
@@ -147,6 +176,14 @@ class Program
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 await bot.SendTextMessageAsync(chat.Id, "Введите Id пользователя");
                                 waitingAnswerUser = true;
+                                getAdmin = true;
+                                break;
+                            case "delete_admin":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                string listAdmin = await connection.ToListAdins();
+                                await bot.SendTextMessageAsync(chat.Id, $"Введите Id пользователя, которого хотите удалить:\n{listAdmin}" );
+                                waitingAnswerUser = true;
+                                deleteAdmin = true;
                                 break;
                         }
                         return;
@@ -168,11 +205,32 @@ class Program
         var chat = message.Chat;
         var text = message.Text;
         long answer;
+        long.TryParse(text, out answer);
+        bool check = await connection.CheckListAdmin(answer);
+        if (check)
+        {
+            return 2;
+        }
+        else if (long.TryParse(text, out answer))
+        {
+            return answer;
+        }
+        return 0;
+    }
+
+    public static async Task<long> DeleteAdminAnswerUser(Update update)
+    {
+        var message = update.Message;
+        var user = message.From;
+        var chat = message.Chat;
+        var text = message.Text;
+        long answer;
+        long.TryParse(text, out answer);
+        bool check = await connection.CheckListAdmin(answer);
         if (long.TryParse(text, out answer))
         {
             return answer;
         }
-
         return 0;
     }
 

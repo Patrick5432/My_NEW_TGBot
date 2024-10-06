@@ -57,12 +57,38 @@ namespace NewTGBot
 
         }
 
+        public async Task DeleteAdmin(long userId)
+        {
+            var db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<BsonDocument>("admins");
+
+            var filter = Builders<BsonDocument>.Filter.Eq("UserId", userId);
+            var result = await collection.DeleteOneAsync(filter);
+
+            Console.WriteLine($"Удалён админ с Id {userId}");
+        }
+
+        public async Task<string> ToListAdins()
+        {
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Admins>("admins");
+            List<Admins> admins = await collection.Find(new BsonDocument()).ToListAsync();
+
+            string listAdmins = "";
+            foreach (var admin in admins)
+            {
+                string strAdming = admin.UserId.ToString();
+                listAdmins = listAdmins + strAdming + "\n";
+            }
+            return listAdmins;
+        }
+
         public async Task<bool> CheckAdmins()
         {
             db = client.GetDatabase("telegram_bot");
-            var collection = db.GetCollection<BsonDocument>("admins");
+            var collection = db.GetCollection<Admins>("admins");
             using var cursor = await collection.FindAsync(new BsonDocument());
-            List<BsonDocument> users = cursor.ToList();
+            List<Admins> users = cursor.ToList();
             foreach (var user in users)
             {
                 if (user == null)
