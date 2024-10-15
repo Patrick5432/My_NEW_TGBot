@@ -18,12 +18,16 @@ class Program
     private static ReceiverOptions ? receiverOptions;
     private static InlineKeyboardMarkup ? question;
     private static InlineKeyboardMarkup ? adminPanel;
+    private static InlineKeyboardMarkup ? rafflePanel;
+    private static InlineKeyboardMarkup? adminRafflePanel;
     private static bool waitingAnswerUser = false;
     private static bool getAdmin = false;
     private static bool deleteAdmin = false;
     private static bool createRaffle = false;
+    private static bool joinRaffle = false;
     private static int count = 0;
     private static string[] raffleNames = new string[2];
+    private static long longRaffleId = 0;
     private static MongoConnection ? connection = new MongoConnection();
     public static async Task Main(string[] args)
     {
@@ -55,6 +59,27 @@ class Program
             {
                 InlineKeyboardButton.WithCallbackData("Добавить админа", "add_admin"),
                 InlineKeyboardButton.WithCallbackData("Удалить админа", "delete_admin"),
+            }
+        });
+
+        rafflePanel = new InlineKeyboardMarkup(new List<InlineKeyboardButton[]>
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Участвовать", "join_raffle"),
+            },
+        });
+
+        adminRafflePanel = new InlineKeyboardMarkup(new List<InlineKeyboardButton[]>
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Редактировать розыгрыш", "edit_raffle"),
+            },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Провести", "start_raffle"),
+                InlineKeyboardButton.WithCallbackData("Удалить розыгрыш", "delete_raffle"),
             }
         });
 
@@ -182,8 +207,34 @@ class Program
                         var callbackQuery = update.CallbackQuery;
                         var user = callbackQuery.From;
                         var chat = callbackQuery.Message.Chat;
+                        await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+
                         bool checkAdmin = await connection.CheckAdmins();
-                        switch(callbackQuery.Data)
+                        string raffleId = callbackQuery.Data;
+                        if (long.TryParse(raffleId, out var result))
+                        {
+                            bool checkRaffle = await connection.CheckIdRaffle(raffleId);
+                            if (checkRaffle)
+                            {
+                                string nameRaffle = await connection.FindNameRaffle(raffleId);
+                                string description = await connection.FindDescriptionRaffle(raffleId);
+                                bool checkAdminRaffle = await connection.CheckAdmins();
+                                Console.WriteLine(checkAdminRaffle);
+                                switch (checkAdminRaffle)
+                                {
+                                    case true:
+                                        await bot.SendTextMessageAsync(chat.Id, $"{nameRaffle}\n{description}", replyMarkup: adminRafflePanel);
+                                        break;
+                                    case false:
+                                        longRaffleId = result;
+                                        await bot.SendTextMessageAsync(chat.Id, $"{nameRaffle}\n{description}", replyMarkup: rafflePanel);
+                                        break;
+                                }
+                            }
+                        }
+                        //Console.WriteLine(raffleId);
+                        
+                        switch (callbackQuery.Data)
                         {
                             case "yes":
                                 bool check = await connection.CheckAdmins();
@@ -223,6 +274,20 @@ class Program
                                 await bot.SendTextMessageAsync(chat.Id, $"Введите Id пользователя, которого хотите удалить:\n{listAdmin}" );
                                 waitingAnswerUser = true;
                                 deleteAdmin = true;
+                                break;
+                            case "join_raffle":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                Console.WriteLine(longRaffleId);
+                                bool checkJoinRaffle = await connection.CheckUserInRaffle(longRaffleId, user.Id);
+                                if (checkJoinRaffle)
+                                {
+                                    await bot.SendTextMessageAsync(chat.Id, "Вы уже участвуете в этом розыгрыше");
+                                }
+                                else
+                                {
+                                    await connection.GetUserInRaffle(longRaffleId, user.Id);
+                                    await bot.SendTextMessageAsync(chat.Id, "Вы участвуйте в розыгрыше!");
+                                }
                                 break;
                         }
                         return;

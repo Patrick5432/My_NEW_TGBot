@@ -1,4 +1,5 @@
-﻿using MongoDB.Bson;
+﻿using Amazon.Runtime.Internal.Auth;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Misc;
@@ -18,9 +19,6 @@ namespace NewTGBot
         public async Task MongoUpdate()
         {
             Console.WriteLine("База данных работает");
-            await GetArrayIdRaffles();
-            await GetArrayNamesRaffles();
-            await SetIdRaffle();
             db = client.GetDatabase("telegram_bot");
             await db.CreateCollectionAsync("users");
             await db.CreateCollectionAsync("admins");
@@ -147,8 +145,6 @@ namespace NewTGBot
                 string strId = raffle.Id.ToString();
                 stringId.Add(strId);
             }
-
-            Console.WriteLine(stringId[0]);
             return stringId;
         }
 
@@ -164,10 +160,80 @@ namespace NewTGBot
                 string strName = raffle.Name.ToString();
                 stringNames.Add(strName);
             }
-
-            Console.WriteLine(stringNames[0]);
             return stringNames;
         }
+
+        public async Task<bool> CheckIdRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+            string strRaffle = raffle.Id.ToString();
+            Console.WriteLine(strRaffle);
+            if (strRaffle != "")
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public async Task<long> FindIdRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+
+            return raffle.Id;
+        }
+
+        public async Task<string> FindNameRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+            string strRaffle = raffle.Name.ToString();
+
+            return strRaffle;
+        }
+
+        public async Task<string> FindDescriptionRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+            string strRaffle = raffle.Description.ToString();
+
+            return strRaffle;
+        }
+
+        public async Task<bool> CheckUserInRaffle(long raffleId, long userId)
+        {
+            var db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<UsersInRaffle>("users_in_raffle");
+
+            // Преобразуем идентификаторы в строки
+            string strUser = userId.ToString();
+            string strId = raffleId.ToString();
+
+            // Проверяем, существует ли запись с указанным RaffleId и UserId
+            var userInRaffle = await collection.Find(new BsonDocument { { "RaffleId", strId }, { "UserId", strUser } }).FirstOrDefaultAsync();
+
+            // Если запись найдена, возвращаем true, иначе false
+            return userInRaffle != null;
+        }
+
+
 
         public async Task<InlineKeyboardMarkup> GetButtonsRaffle()
         {
@@ -186,6 +252,14 @@ namespace NewTGBot
             }
 
             return new InlineKeyboardMarkup(inlineKeyboard);
+        }
+
+        public async Task GetUserInRaffle(long raffleId, long userId)
+        {
+            UsersInRaffle usersInRaffle = new UsersInRaffle(raffleId, userId);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<UsersInRaffle>("users_in_raffle");
+            collection.InsertOne(usersInRaffle);
         }
 
 
@@ -230,10 +304,10 @@ namespace NewTGBot
         public class UsersInRaffle
         {
             public ObjectId Id { get; set; }
-            public int RaffleId { get; set; }
-            public int UserId { get; set; }
+            public long RaffleId { get; set; }
+            public long UserId { get; set; }
 
-            public UsersInRaffle(int raffleId, int userId)
+            public UsersInRaffle(long raffleId, long userId)
             {
                 RaffleId = raffleId;
                 UserId = userId;
