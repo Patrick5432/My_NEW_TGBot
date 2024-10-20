@@ -177,13 +177,16 @@ class Program
                                     {
                                         Message msg = await bot.SendTextMessageAsync(chat.Id, "Привет");
                                         InlineKeyboardMarkup buttonsRaffles = await connection.GetButtonsRaffle();
-                                        await bot.SendTextMessageAsync(chat.Id, "Выберите розыгрыш", replyMarkup: buttonsRaffles);
                                         bool check = await connection.CheckAdmins();
                                         bool isAdmin = await connection.CheckListAdmin(user.Id);
                                         long checkRaffle = await connection.SetIdRaffle();
                                         if (checkRaffle == 0)
                                         {
                                             await bot.SendTextMessageAsync(chat.Id, "На данный момент нету проводимых розыгрышей.");
+                                        }
+                                        else
+                                        {
+                                            await bot.SendTextMessageAsync(chat.Id, "Выберите розыгрыш", replyMarkup: buttonsRaffles);
                                         }
                                         if (check != true)
                                         {
