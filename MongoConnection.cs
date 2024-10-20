@@ -222,16 +222,19 @@ namespace NewTGBot
             var db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<UsersInRaffle>("users_in_raffle");
 
-            // Преобразуем идентификаторы в строки
-            string strUser = userId.ToString();
-            string strId = raffleId.ToString();
+            // Создаем фильтр для поиска пользователя в конкретном конкурсе
+            var filter = Builders<UsersInRaffle>.Filter.And(
+                Builders<UsersInRaffle>.Filter.Eq(u => u.RaffleId, raffleId),
+                Builders<UsersInRaffle>.Filter.Eq(u => u.UserId, userId)
+            );
 
-            // Проверяем, существует ли запись с указанным RaffleId и UserId
-            var userInRaffle = await collection.Find(new BsonDocument { { "RaffleId", strId }, { "UserId", strUser } }).FirstOrDefaultAsync();
+            // Ищем пользователя в коллекции
+            var userInRaffle = await collection.Find(filter).FirstOrDefaultAsync();
 
-            // Если запись найдена, возвращаем true, иначе false
+            // Если пользователь найден, значит он участвует в конкурсе
             return userInRaffle != null;
         }
+
 
 
 

@@ -218,8 +218,7 @@ class Program
                             {
                                 string nameRaffle = await connection.FindNameRaffle(raffleId);
                                 string description = await connection.FindDescriptionRaffle(raffleId);
-                                bool checkAdminRaffle = await connection.CheckAdmins();
-                                Console.WriteLine(checkAdminRaffle);
+                                bool checkAdminRaffle = await connection.CheckListAdmin(user.Id);
                                 switch (checkAdminRaffle)
                                 {
                                     case true:
@@ -281,7 +280,7 @@ class Program
                                 bool checkJoinRaffle = await connection.CheckUserInRaffle(longRaffleId, user.Id);
                                 if (checkJoinRaffle)
                                 {
-                                    await bot.SendTextMessageAsync(chat.Id, "Вы уже участвуете в этом розыгрыше");
+                                    await bot.SendTextMessageAsync(chat.Id, "Только один раз можно участвовать!");
                                 }
                                 else
                                 {
