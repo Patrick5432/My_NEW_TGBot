@@ -26,6 +26,7 @@ class Program
     private static bool getAdmin = false;
     private static bool deleteAdmin = false;
     private static bool createRaffle = false;
+    private static bool editRaffle = false;
     private static bool joinRaffle = false;
     private static int count = 0;
     private static string[] raffleNames = new string[2];
@@ -171,6 +172,26 @@ class Program
                             }
                             count++;
                         }
+                        if (editRaffle)
+                        {
+                            switch (count)
+                            {
+                                case 0:
+                                    await bot.SendTextMessageAsync(chat.Id, "Введите описание розыгрыша:");
+                                    raffleNames[count] = text;
+                                    break;
+                                case 1:
+                                    raffleNames[count] = text;
+                                    long id = await connection.SetIdRaffle();
+                                    await connection.EditRaffle(raffleNames[0], raffleNames[1], intRaffleId);
+                                    await bot.SendTextMessageAsync(chat.Id, "Розыгрыш обновлён!");
+                                    Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
+                                    count = 0;
+                                    editRaffle = false;
+                                    break;
+                            }
+                            count++;
+                        }
                         switch (message.Type)
                         {
                             case MessageType.Text:
@@ -282,6 +303,13 @@ class Program
                                 count = 0;
                                 createRaffle = true;
                                 break;
+                            case "edit_raffle":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                Console.WriteLine($"{user.Username} Редактирует розыгрыш");
+                                await bot.SendTextMessageAsync(chat.Id, "Введите название розыгрыша:");
+                                count = 0;
+                                editRaffle = true;
+                                break;
                             case "add_admin":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 await bot.SendTextMessageAsync(chat.Id, "Введите Id пользователя");
@@ -313,8 +341,9 @@ class Program
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 Console.WriteLine($"Сейчас проводиться розыгрыш с id: {intRaffleId}");
                                 int ranUser = await connection.GetRandomNumberInUsers(intRaffleId);
+                                Console.WriteLine("Проверка на изменение айди: " + intRaffleId);
                                 var strRanUser = await connection.GetRandomUser(ranUser, intRaffleId);
-                                await connection.UpdateRaffleWinnerAndStatus(strRanUser, intCallbackQuery);
+                                await connection.UpdateRaffleWinnerAndStatus(strRanUser, intRaffleId);
                                 await bot.SendTextMessageAsync(chat.Id, $"Добавлен победитель в розыгрыш!\nПобедитель: {strRanUser}");
                                 break;
                             case "delete_raffle":

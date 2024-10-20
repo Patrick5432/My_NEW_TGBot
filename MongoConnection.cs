@@ -117,24 +117,26 @@ namespace NewTGBot
 
         public async Task<long> SetIdRaffle()
         {
-            db = client.GetDatabase("telegram_bot");
+            var db = client.GetDatabase("telegram_bot");
             var collections = db.GetCollection<Raffle>("raffles");
-            long count = await collections.CountDocumentsAsync(new BsonDocument());
-            if (count < 1)
+
+            // Находим максимальный ID в коллекции
+            var maxIdDocument = await collections.Find(new BsonDocument())
+                .Sort(Builders<Raffle>.Sort.Descending("_id"))
+                .Limit(1)
+                .FirstOrDefaultAsync();
+
+            // Если коллекция пуста, возвращаем 0
+            if (maxIdDocument == null)
             {
                 return 0;
             }
-            else if (count == 1)
-            {
-                return 1;
-            }
-            else
-            {
-                long id = count;
-                return id;
-            }
-            
+
+            // Возвращаем ID на один больше максимального
+            long maxId = maxIdDocument.Id; // Предполагается, что у вас есть свойство Id в классе Raffle
+            return maxId + 1;
         }
+
 
         public async Task<List<string>> GetArrayIdRaffles()
         {
@@ -327,6 +329,7 @@ namespace NewTGBot
 
         public async Task UpdateRaffleWinnerAndStatus(string ranUser, long raffleId)
         {
+            Console.WriteLine("Айди розыгрыша" + raffleId);
             var db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<Raffle>("raffles");
 
@@ -343,22 +346,26 @@ namespace NewTGBot
             Console.WriteLine("Розыгрыш обновлён");
         }
 
+        public async Task EditRaffle(string name, string description, long raffleId)
+        {
+            var db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+            var filter = Builders<Raffle>.Filter.Eq("_id", raffleId);
+            var update = Builders<Raffle>.Update
+                .Set("Name", name)
+                .Set("Description", description);
+            await collection.UpdateOneAsync(filter, update);
+            Console.WriteLine("Имя и описание розыгрыша обновлены");
+        }
+
         public async Task DeleteRaffleAndReassignIds(long raffleId)
         {
             var db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<Raffle>("raffles");
             await collection.DeleteOneAsync(new BsonDocument("_id", raffleId));
+            var collection_userInRaffle = db.GetCollection<UsersInRaffle>("users_in_raffle");
+            await collection_userInRaffle.DeleteManyAsync(new BsonDocument("RaffleId", raffleId));
             Console.WriteLine($"Розыгрыш с ID {raffleId} удалён.");
-            var remainingRaffles = await collection.Find(new BsonDocument()).ToListAsync();
-            for (int i = 0; i < remainingRaffles.Count; i++)
-            {
-                remainingRaffles[i].Id = i;
-                var filter = Builders<Raffle>.Filter.Eq("_id", remainingRaffles[i].Id);
-                var update = Builders<Raffle>.Update.Set("Id", remainingRaffles[i].Id);
-                await collection.UpdateOneAsync(filter, update);
-            }
-
-            Console.WriteLine("Id оставшихся розыгрышей пересортированы.");
         }
 
 
