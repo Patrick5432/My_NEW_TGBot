@@ -7,6 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
+using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -20,6 +21,7 @@ class Program
     private static InlineKeyboardMarkup ? adminPanel;
     private static InlineKeyboardMarkup ? rafflePanel;
     private static InlineKeyboardMarkup? adminRafflePanel;
+    private static int intRaffleId;
     private static bool waitingAnswerUser = false;
     private static bool getAdmin = false;
     private static bool deleteAdmin = false;
@@ -213,23 +215,39 @@ class Program
                         await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
 
                         bool checkAdmin = await connection.CheckAdmins();
+                        string checkTypeCallback = callbackQuery.Data;
+                        if (int.TryParse(checkTypeCallback, out int intCallbackQuery))
+                        {
+                            intRaffleId = intCallbackQuery;
+                        }
                         string raffleId = callbackQuery.Data;
                         if (long.TryParse(raffleId, out var result))
                         {
                             bool checkRaffle = await connection.CheckIdRaffle(raffleId);
                             if (checkRaffle)
                             {
+                                string statusRaffle = await connection.FindStatusRaffle(raffleId);
                                 string nameRaffle = await connection.FindNameRaffle(raffleId);
                                 string description = await connection.FindDescriptionRaffle(raffleId);
                                 bool checkAdminRaffle = await connection.CheckListAdmin(user.Id);
+                                string winnerRaffle = await connection.FindWinnerInRaffle(raffleId);
+                                string strWinner = "";
+                                if (winnerRaffle != "")
+                                {
+                                    strWinner = $"Победитель: {winnerRaffle}";
+                                }
                                 switch (checkAdminRaffle)
                                 {
                                     case true:
-                                        await bot.SendTextMessageAsync(chat.Id, $"{nameRaffle}\n{description}", replyMarkup: adminRafflePanel);
+                                        await bot.SendTextMessageAsync(chat.Id, $"<b>Статус: {statusRaffle}</b>\n<b>{nameRaffle}</b>\n{description}\n{strWinner}",
+                                            replyMarkup: adminRafflePanel,
+                                            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
                                         break;
                                     case false:
                                         longRaffleId = result;
-                                        await bot.SendTextMessageAsync(chat.Id, $"{nameRaffle}\n{description}", replyMarkup: rafflePanel);
+                                        await bot.SendTextMessageAsync(chat.Id, $"<b>Статус: {statusRaffle}</b>\n<b>{nameRaffle}</b>\n{description}\n{strWinner}",
+                                            replyMarkup: rafflePanel,
+                                            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
                                         break;
                                 }
                             }
@@ -290,6 +308,14 @@ class Program
                                     await connection.GetUserInRaffle(longRaffleId, user.Id);
                                     await bot.SendTextMessageAsync(chat.Id, "Вы участвуйте в розыгрыше!");
                                 }
+                                break;
+                            case "start_raffle":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                Console.WriteLine($"Сейчас проводиться розыгрыш с id: {intRaffleId}");
+                                int ranUser = await connection.GetRandomNumberInUsers(intRaffleId);
+                                var strRanUser = await connection.GetRandomUser(ranUser, intRaffleId);
+                                await connection.UpdateRaffleWinnerAndStatus(strRanUser, intCallbackQuery);
+                                await bot.SendTextMessageAsync(chat.Id, $"Добавлен победитель в розыгрыш!\nПобедитель: {strRanUser}");
                                 break;
                         }
                         return;

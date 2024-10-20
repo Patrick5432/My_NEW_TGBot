@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Telegram.Bot.Types.ReplyMarkups;
+using static NewTGBot.MongoConnection;
 
 namespace NewTGBot
 {
@@ -24,6 +25,8 @@ namespace NewTGBot
             await db.CreateCollectionAsync("admins");
             await db.CreateCollectionAsync("raffles");
             await db.CreateCollectionAsync("users_in_raffle");
+            int ranCount = await GetRandomNumberInUsers(0);
+            await GetRandomUser(ranCount, 0);
         }
 
         public async Task GetAdmin(long userId)
@@ -193,6 +196,18 @@ namespace NewTGBot
             return raffle.Id;
         }
 
+        public async Task<string> FindStatusRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+            
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+            string strRaffle = raffle.Status.ToString();
+
+            return strRaffle;
+        }
+
         public async Task<string> FindNameRaffle(string id)
         {
             long.TryParse(id, out var result);
@@ -213,6 +228,18 @@ namespace NewTGBot
 
             var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
             string strRaffle = raffle.Description.ToString();
+
+            return strRaffle;
+        }
+
+        public async Task<string> FindWinnerInRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+            string strRaffle = raffle.Winner.ToString();
 
             return strRaffle;
         }
@@ -265,6 +292,58 @@ namespace NewTGBot
             collection.InsertOne(usersInRaffle);
         }
 
+        public async Task<int> GetRandomNumberInUsers(long raffleId)
+        {
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<UsersInRaffle>("users_in_raffle");
+            var filter = new BsonDocument { { "RaffleId", raffleId } };
+            List<UsersInRaffle> raffles = await collection.Find(filter).ToListAsync();
+            int count = 0;
+            List<long> userInRaffle;
+            foreach (var raffle in raffles)
+            {
+                count++;
+            }
+            Random ran = new Random();
+            int ranUser = ran.Next(0, count);
+            return ranUser;
+        }
+
+        public async Task<string> GetRandomUser(int ranUser, long raffleId)
+        {
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<UsersInRaffle>("users_in_raffle");
+            var filter = new BsonDocument { { "RaffleId", raffleId } };
+            List<string> userInRaffle = new List<string>();
+            List<UsersInRaffle> raffles = await collection.Find(filter).ToListAsync();
+            
+            foreach (var raffle in raffles)
+            {
+                userInRaffle.Add(raffle.UserId.ToString());
+            }
+            Console.WriteLine($"Победитель {userInRaffle[ranUser]}");
+            return userInRaffle[ranUser];
+        }
+
+        public async Task UpdateRaffleWinnerAndStatus(string ranUser, long raffleId)
+        {
+            var db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            // Создаем фильтр для поиска нужного розыгрыша
+            var filter = Builders<Raffle>.Filter.Eq("_id", raffleId);
+
+            // Создаем обновление с использованием одного $set
+            var update = Builders<Raffle>.Update
+                .Set("Winner", ranUser)
+                .Set("Status", "Завершено");
+
+            // Выполняем обновление
+            await collection.UpdateOneAsync(filter, update);
+            Console.WriteLine("Розыгрыш обновлён");
+        }
+
+
 
         public class Raffle
         {
@@ -272,6 +351,7 @@ namespace NewTGBot
             public string Status { get; set; }
             public string Name { get; set; }
             public string Description { get; set; }
+            public string Winner { get; set; }
 
             public Raffle(long id, string status, string name, string description)
             {
@@ -279,6 +359,7 @@ namespace NewTGBot
                 Status = status;
                 Name = name;
                 Description = description;
+                Winner = "";
             }
         }
 
