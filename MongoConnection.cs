@@ -343,6 +343,25 @@ namespace NewTGBot
             Console.WriteLine("Розыгрыш обновлён");
         }
 
+        public async Task DeleteRaffleAndReassignIds(long raffleId)
+        {
+            var db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+            await collection.DeleteOneAsync(new BsonDocument("_id", raffleId));
+            Console.WriteLine($"Розыгрыш с ID {raffleId} удалён.");
+            var remainingRaffles = await collection.Find(new BsonDocument()).ToListAsync();
+            for (int i = 0; i < remainingRaffles.Count; i++)
+            {
+                remainingRaffles[i].Id = i;
+                var filter = Builders<Raffle>.Filter.Eq("_id", remainingRaffles[i].Id);
+                var update = Builders<Raffle>.Update.Set("Id", remainingRaffles[i].Id);
+                await collection.UpdateOneAsync(filter, update);
+            }
+
+            Console.WriteLine("Id оставшихся розыгрышей пересортированы.");
+        }
+
+
 
 
         public class Raffle

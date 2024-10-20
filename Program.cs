@@ -317,6 +317,11 @@ class Program
                                 await connection.UpdateRaffleWinnerAndStatus(strRanUser, intCallbackQuery);
                                 await bot.SendTextMessageAsync(chat.Id, $"Добавлен победитель в розыгрыш!\nПобедитель: {strRanUser}");
                                 break;
+                            case "delete_raffle":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                await connection.DeleteRaffleAndReassignIds(intRaffleId);
+                                await bot.SendTextMessageAsync(chat.Id, "Розыгрыш удалён");
+                                break;
                         }
                         return;
                     }
