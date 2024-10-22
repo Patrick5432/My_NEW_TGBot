@@ -57,6 +57,7 @@ class Program
             new[]
             {
                 InlineKeyboardButton.WithCallbackData("Создать розыгрыш", "create_raffle"),
+                InlineKeyboardButton.WithCallbackData("Проверить время проведения розыгрышей", "check_time"),
             },
             new[]
             {
@@ -163,7 +164,8 @@ class Program
                                 case 1:
                                     raffleNames[count] = text;
                                     long id = await connection.SetIdRaffle();
-                                    await connection.GetRaffle(id, "Проводится", raffleNames[0], raffleNames[1]);
+                                    DateTime dateTime = new DateTime(2024, 10, 23 + 1);
+                                    await connection.GetRaffle(id, "Проводится", raffleNames[0], raffleNames[1], dateTime);
                                     await bot.SendTextMessageAsync(chat.Id, "Розыгрыш создан!");
                                     Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
                                     count = 0;
@@ -303,6 +305,18 @@ class Program
                                 count = 0;
                                 createRaffle = true;
                                 break;
+                            case "check_time":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                bool checkDateRaffle = await connection.CheckDataRaffle();
+                                if (checkDateRaffle)
+                                {
+                                    await bot.SendTextMessageAsync(chat.Id, "Обновлён статус найденных розыгрышей.");
+                                }
+                                else
+                                {
+                                    await bot.SendTextMessageAsync(chat.Id, "Проводимые розыгрыши не найдены.");
+                                }
+                                break;
                             case "edit_raffle":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 Console.WriteLine($"{user.Username} Редактирует розыгрыш");
@@ -343,8 +357,15 @@ class Program
                                 int ranUser = await connection.GetRandomNumberInUsers(intRaffleId);
                                 Console.WriteLine("Проверка на изменение айди: " + intRaffleId);
                                 var strRanUser = await connection.GetRandomUser(ranUser, intRaffleId);
-                                await connection.UpdateRaffleWinnerAndStatus(strRanUser, intRaffleId);
-                                await bot.SendTextMessageAsync(chat.Id, $"Добавлен победитель в розыгрыш!\nПобедитель: {strRanUser}");
+                                if (strRanUser != "")
+                                {
+                                    await connection.UpdateRaffleWinnerAndStatus(strRanUser, intRaffleId);
+                                    await bot.SendTextMessageAsync(chat.Id, $"Добавлен победитель в розыгрыш!\nПобедитель: {strRanUser}");
+                                }
+                                else
+                                {
+                                    await bot.SendTextMessageAsync(chat.Id, "Сейчас никто не участвует в розыгрыше");
+                                }
                                 break;
                             case "delete_raffle":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);

@@ -25,8 +25,7 @@ namespace NewTGBot
             await db.CreateCollectionAsync("admins");
             await db.CreateCollectionAsync("raffles");
             await db.CreateCollectionAsync("users_in_raffle");
-            int ranCount = await GetRandomNumberInUsers(0);
-            await GetRandomUser(ranCount, 0);
+            await CheckDataRaffle();
         }
 
         public async Task GetAdmin(long userId)
@@ -108,9 +107,9 @@ namespace NewTGBot
             }
         }
 
-        public async Task GetRaffle(long id, string status, string name, string description)
+        public async Task GetRaffle(long id, string status, string name, string description, DateTime dateTime)
         {
-            Raffle raffle = new Raffle(id: id, status: status, name: name, description: description);
+            Raffle raffle = new Raffle(id: id, status: status, name: name, description: description, dataEvent: dateTime);
             var raffles = db.GetCollection<Raffle>("raffles");
             raffles.InsertOne(raffle);
         }
@@ -311,7 +310,7 @@ namespace NewTGBot
             return ranUser;
         }
 
-        public async Task<string> GetRandomUser(int ranUser, long raffleId)
+        public async Task<string> GetRandomUser(long ranUser, long raffleId)
         {
             db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<UsersInRaffle>("users_in_raffle");
@@ -323,8 +322,19 @@ namespace NewTGBot
             {
                 userInRaffle.Add(raffle.UserId.ToString());
             }
-            Console.WriteLine($"Победитель {userInRaffle[ranUser]}");
-            return userInRaffle[ranUser];
+            Console.WriteLine($"Проверка: {userInRaffle}");
+            if (userInRaffle.Count > 0)
+            {
+                int intRanUser = (int)ranUser;
+                Console.WriteLine($"Победитель {userInRaffle[intRanUser]}");
+                return userInRaffle[intRanUser];
+            }
+            else
+            {
+                Console.WriteLine("Сейчас никто не участвует!");
+                return "";
+            }
+            
         }
 
         public async Task UpdateRaffleWinnerAndStatus(string ranUser, long raffleId)
@@ -368,6 +378,34 @@ namespace NewTGBot
             Console.WriteLine($"Розыгрыш с ID {raffleId} удалён.");
         }
 
+        public async Task<bool> CheckDataRaffle()
+        {
+            var db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+            var raffles = await collection.Find("{}").ToListAsync();
+            bool checkDateRaffle = false;
+            foreach (var raffle in raffles)
+            {
+                if (raffle != null)
+                {
+                    Console.WriteLine($"Розыгрыш с айди: {raffle.Id}, со статусом: {raffle.Status} и временем {raffle.DataEvent} Текущее время: {DateTime.Now}");
+                    if (raffle.DataEvent < DateTime.Now && raffle.Status == "Проводится")
+                    {
+                        int ranCount = await GetRandomNumberInUsers(raffle.Id);
+                        string strUser = await GetRandomUser(ranCount, raffle.Id);
+                        await UpdateRaffleWinnerAndStatus(strUser, raffle.Id);
+                        checkDateRaffle = true;
+                        Console.WriteLine($"Розыгрыш под id: {raffle.Id} автоматически проведён!");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Сейчас не время автоматически проводить розыгрыш");
+                    }
+                }
+            }
+            return checkDateRaffle;
+        }
+
 
 
 
@@ -377,14 +415,16 @@ namespace NewTGBot
             public string Status { get; set; }
             public string Name { get; set; }
             public string Description { get; set; }
+            public DateTime DataEvent { get; set; }
             public string Winner { get; set; }
 
-            public Raffle(long id, string status, string name, string description)
+            public Raffle(long id, string status, string name, string description, DateTime dataEvent)
             {
                 Id = id;
                 Status = status;
                 Name = name;
                 Description = description;
+                DataEvent = dataEvent;
                 Winner = "";
             }
         }

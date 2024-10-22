@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NewTGBot")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+311b1ff33c28b13eabbdaf24c799bb91bba41de7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb2c9236bb819ca609e0eefa9c6ef053a96801c1")]
 [assembly: System.Reflection.AssemblyProductAttribute("NewTGBot")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NewTGBot")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
