@@ -107,9 +107,9 @@ namespace NewTGBot
             }
         }
 
-        public async Task GetRaffle(long id, string status, string name, string description, DateTime dateTime)
+        public async Task GetRaffle(long id, string status, byte[] image, string name, string description, DateTime dateTime)
         {
-            Raffle raffle = new Raffle(id: id, status: status, name: name, description: description, dataEvent: dateTime);
+            Raffle raffle = new Raffle(id: id, status: status, image: image, name: name, description: description, dataEvent: dateTime);
             var raffles = db.GetCollection<Raffle>("raffles");
             raffles.InsertOne(raffle);
         }
@@ -245,6 +245,17 @@ namespace NewTGBot
             return strRaffle;
         }
 
+        public async Task<byte[]> FindImageDataRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+
+            return raffle.Image;
+        }
+
         public async Task<string> FindWinnerInRaffle(string id)
         {
             long.TryParse(id, out var result);
@@ -368,13 +379,14 @@ namespace NewTGBot
             Console.WriteLine("Розыгрыш обновлён");
         }
 
-        public async Task EditRaffle(string name, string description, DateTime dateEvent,long raffleId)
+        public async Task EditRaffle(byte[] image, string name, string description, DateTime dateEvent,long raffleId)
         {
             var db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<Raffle>("raffles");
             var filter = Builders<Raffle>.Filter.Eq("_id", raffleId);
             var update = Builders<Raffle>.Update
                 .Set ("Status", "Проводится")
+                .Set ("Image", image)
                 .Set("Name", name)
                 .Set("Description", description)
                 .Set("DataEvent", dateEvent);
@@ -427,15 +439,17 @@ namespace NewTGBot
         {
             public long Id { get; set; }
             public string Status { get; set; }
+            public byte[] Image { get; set; }
             public string Name { get; set; }
             public string Description { get; set; }
             public DateTime DataEvent { get; set; }
             public string Winner { get; set; }
 
-            public Raffle(long id, string status, string name, string description, DateTime dataEvent)
+            public Raffle(long id, string status, byte[] image, string name, string description, DateTime dataEvent)
             {
                 Id = id;
                 Status = status;
+                Image = image;
                 Name = name;
                 Description = description;
                 DataEvent = dataEvent;
