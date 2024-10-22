@@ -233,6 +233,18 @@ namespace NewTGBot
             return strRaffle;
         }
 
+        public async Task<string> FindDateRaffle(string id)
+        {
+            long.TryParse(id, out var result);
+            db = client.GetDatabase("telegram_bot");
+            var collection = db.GetCollection<Raffle>("raffles");
+
+            var raffle = await collection.Find(new BsonDocument("_id", result)).FirstAsync();
+            string strRaffle = raffle.DataEvent.ToShortDateString();
+
+            return strRaffle;
+        }
+
         public async Task<string> FindWinnerInRaffle(string id)
         {
             long.TryParse(id, out var result);
@@ -356,14 +368,16 @@ namespace NewTGBot
             Console.WriteLine("Розыгрыш обновлён");
         }
 
-        public async Task EditRaffle(string name, string description, long raffleId)
+        public async Task EditRaffle(string name, string description, DateTime dateEvent,long raffleId)
         {
             var db = client.GetDatabase("telegram_bot");
             var collection = db.GetCollection<Raffle>("raffles");
             var filter = Builders<Raffle>.Filter.Eq("_id", raffleId);
             var update = Builders<Raffle>.Update
+                .Set ("Status", "Проводится")
                 .Set("Name", name)
-                .Set("Description", description);
+                .Set("Description", description)
+                .Set("DataEvent", dateEvent);
             await collection.UpdateOneAsync(filter, update);
             Console.WriteLine("Имя и описание розыгрыша обновлены");
         }

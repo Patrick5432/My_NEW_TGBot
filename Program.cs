@@ -29,7 +29,7 @@ class Program
     private static bool editRaffle = false;
     private static bool joinRaffle = false;
     private static int count = 0;
-    private static string[] raffleNames = new string[2];
+    private static string[] raffleNames = new string[3];
     private static long longRaffleId = 0;
     private static MongoConnection ? connection = new MongoConnection();
     public static async Task Main(string[] args)
@@ -162,10 +162,31 @@ class Program
                                     raffleNames[count] = text;
                                     break;
                                 case 1:
+                                    await bot.SendTextMessageAsync(chat.Id, "Введите время проведения розыгрыша:\n" +
+                                        "Пример: 01.01.2024 - день, месяц, год.");
                                     raffleNames[count] = text;
+                                    break;
+                                case 2:
+                                    raffleNames[count] = text.Trim();
+                                    Console.WriteLine($"Проверка даты:{raffleNames[2]}");
+                                    DateTime dateEvent;
+                                    try
+                                    {
+                                        DateTime data = DateTime.ParseExact(raffleNames[2], "dd.MM.yyyy", null);
+                                        Console.WriteLine(data);
+                                        Console.WriteLine($"Проверка массива raffleNames: {raffleNames[2]}");
+                                        dateEvent = data.Date;
+                                        dateEvent.AddDays(1);
+                                    }
+                                    catch (FormatException)
+                                    {
+                                        await bot.SendTextMessageAsync(chat.Id, "Некорректный формат даты, создание розыгрыша отменено");
+                                        count = 0;
+                                        createRaffle = false;
+                                        break;
+                                    }
                                     long id = await connection.SetIdRaffle();
-                                    DateTime dateTime = new DateTime(2024, 10, 23 + 1);
-                                    await connection.GetRaffle(id, "Проводится", raffleNames[0], raffleNames[1], dateTime);
+                                    await connection.GetRaffle(id, "Проводится", raffleNames[0], raffleNames[1], dateEvent);
                                     await bot.SendTextMessageAsync(chat.Id, "Розыгрыш создан!");
                                     Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
                                     count = 0;
@@ -176,6 +197,7 @@ class Program
                         }
                         if (editRaffle)
                         {
+                            Console.WriteLine("Проверка работы условия");
                             switch (count)
                             {
                                 case 0:
@@ -183,13 +205,35 @@ class Program
                                     raffleNames[count] = text;
                                     break;
                                 case 1:
+                                    await bot.SendTextMessageAsync(chat.Id, "Введите время проведения розыгрыша:\n" +
+                                        "Пример: 01.01.2024 - день, месяц, год.");
                                     raffleNames[count] = text;
+                                    break;
+                                case 2:
+                                    raffleNames[count] = text.Trim();
+                                    Console.WriteLine($"Проверка даты:{raffleNames[2]}");
+                                    DateTime dateEvent;
+                                    try
+                                    {
+                                        DateTime data = DateTime.ParseExact(raffleNames[2], "dd.MM.yyyy", null);
+                                        Console.WriteLine(data);
+                                        Console.WriteLine($"Проверка массива raffleNames: {raffleNames[2]}");
+                                        dateEvent = data.Date;
+                                        dateEvent.AddDays(1);
+                                    }
+                                    catch (FormatException)
+                                    {
+                                        await bot.SendTextMessageAsync(chat.Id, "Некорректный формат даты, создание розыгрыша отменено");
+                                        count = 0;
+                                        createRaffle = false;
+                                        break;
+                                    }
                                     long id = await connection.SetIdRaffle();
-                                    await connection.EditRaffle(raffleNames[0], raffleNames[1], intRaffleId);
-                                    await bot.SendTextMessageAsync(chat.Id, "Розыгрыш обновлён!");
+                                    await connection.EditRaffle(raffleNames[0], raffleNames[1], dateEvent, intRaffleId);
+                                    await bot.SendTextMessageAsync(chat.Id, "Розыгрыш создан!");
                                     Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
                                     count = 0;
-                                    editRaffle = false;
+                                    createRaffle = false;
                                     break;
                             }
                             count++;
@@ -254,6 +298,7 @@ class Program
                                 string description = await connection.FindDescriptionRaffle(raffleId);
                                 bool checkAdminRaffle = await connection.CheckListAdmin(user.Id);
                                 string winnerRaffle = await connection.FindWinnerInRaffle(raffleId);
+                                string dateEventRaffle = await connection.FindDateRaffle(raffleId);
                                 string strWinner = "";
                                 if (winnerRaffle != "")
                                 {
@@ -262,13 +307,13 @@ class Program
                                 switch (checkAdminRaffle)
                                 {
                                     case true:
-                                        await bot.SendTextMessageAsync(chat.Id, $"<b>Статус: {statusRaffle}</b>\n<b>{nameRaffle}</b>\n{description}\n{strWinner}",
+                                        await bot.SendTextMessageAsync(chat.Id, $"<b>Статус: {statusRaffle}</b>\n<b>{nameRaffle}</b>\n{description}\n{strWinner}\n<b>Дата проведения: {dateEventRaffle}</b>",
                                             replyMarkup: adminRafflePanel,
                                             parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
                                         break;
                                     case false:
                                         longRaffleId = result;
-                                        await bot.SendTextMessageAsync(chat.Id, $"<b>Статус: {statusRaffle}</b>\n<b>{nameRaffle}</b>\n{description}\n{strWinner}",
+                                        await bot.SendTextMessageAsync(chat.Id, $"<b>Статус: {statusRaffle}</b>\n<b>{nameRaffle}</b>\n{description}\n{strWinner}\n<b>Дата проведения: {dateEventRaffle}</b>",
                                             replyMarkup: rafflePanel,
                                             parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
                                         break;
