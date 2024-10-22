@@ -230,6 +230,7 @@ class Program
                                         createRaffle = false;
                                         break;
                                 }
+                                await connection.CheckDataRaffle();
                                 count++;
                             }
                         }
@@ -296,6 +297,7 @@ class Program
                                         createRaffle = false;
                                         break;
                                 }
+                                await connection.CheckDataRaffle();
                                 count++;
                             }
                         }
@@ -456,15 +458,24 @@ class Program
                             case "join_raffle":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 Console.WriteLine(longRaffleId);
-                                bool checkJoinRaffle = await connection.CheckUserInRaffle(longRaffleId, user.Id);
-                                if (checkJoinRaffle)
+                                string strId = intRaffleId.ToString();
+                                string raffleStatus = await connection.FindStatusRaffle(strId);
+                                if (raffleStatus != "Завершено")
                                 {
-                                    await bot.SendTextMessageAsync(chat.Id, "Только один раз можно участвовать!");
+                                    bool checkJoinRaffle = await connection.CheckUserInRaffle(longRaffleId, user.Id);
+                                    if (checkJoinRaffle)
+                                    {
+                                        await bot.SendTextMessageAsync(chat.Id, "Только один раз можно участвовать!");
+                                    }
+                                    else
+                                    {
+                                        await connection.GetUserInRaffle(longRaffleId, user.Id);
+                                        await bot.SendTextMessageAsync(chat.Id, "Вы участвуйте в розыгрыше!");
+                                    }
                                 }
                                 else
                                 {
-                                    await connection.GetUserInRaffle(longRaffleId, user.Id);
-                                    await bot.SendTextMessageAsync(chat.Id, "Вы участвуйте в розыгрыше!");
+                                    await bot.SendTextMessageAsync(chat.Id, "Розыгрыш уже завершен");
                                 }
                                 break;
                             case "start_raffle":
