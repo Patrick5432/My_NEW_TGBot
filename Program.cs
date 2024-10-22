@@ -170,127 +170,134 @@ class Program
                         }
                         if (createRaffle)
                         {
-                            Console.WriteLine("Проверка работы условия");
-                            switch (count)
+                            bool checkAdmin = await connection.CheckListAdmin(user.Id);
+                            if (checkAdmin)
                             {
-                                case 0:
-                                    await bot.SendTextMessageAsync(chat.Id, "Введите описание розыгрыша:");
-                                    raffleNames[count] = text;
-                                    break;
-                                case 1:
-                                    await bot.SendTextMessageAsync(chat.Id, "Введите время проведения розыгрыша:\n" +
-                                        "Пример: 01.01.2024 - день, месяц, год.");
-                                    raffleNames[count] = text;
-                                    break;
-                                case 2:
-                                    raffleNames[count] = text.Trim();
-                                    Console.WriteLine($"Проверка даты:{raffleNames[2]}");
-                                    
-                                    try
-                                    {
-                                        DateTime data = DateTime.ParseExact(raffleNames[2], "dd.MM.yyyy", null);
-                                        Console.WriteLine(data);
-                                        Console.WriteLine($"Проверка массива raffleNames: {raffleNames[2]}");
-                                        dateEvent = data.Date;
-                                        dateEvent.AddDays(1);
-                                    }
-                                    catch (FormatException)
-                                    {
-                                        await bot.SendTextMessageAsync(chat.Id, "Некорректный формат даты, создание розыгрыша отменено");
+                                Console.WriteLine("Проверка работы условия");
+                                switch (count)
+                                {
+                                    case 0:
+                                        await bot.SendTextMessageAsync(chat.Id, "Введите описание розыгрыша:");
+                                        raffleNames[count] = text;
+                                        break;
+                                    case 1:
+                                        await bot.SendTextMessageAsync(chat.Id, "Введите время проведения розыгрыша:\n" +
+                                            "Пример: 01.01.2024 - день, месяц, год.");
+                                        raffleNames[count] = text;
+                                        break;
+                                    case 2:
+                                        raffleNames[count] = text.Trim();
+                                        Console.WriteLine($"Проверка даты:{raffleNames[2]}");
+
+                                        try
+                                        {
+                                            DateTime data = DateTime.ParseExact(raffleNames[2], "dd.MM.yyyy", null);
+                                            Console.WriteLine(data);
+                                            Console.WriteLine($"Проверка массива raffleNames: {raffleNames[2]}");
+                                            dateEvent = data.Date;
+                                        }
+                                        catch (FormatException)
+                                        {
+                                            await bot.SendTextMessageAsync(chat.Id, "Некорректный формат даты, создание розыгрыша отменено");
+                                            count = 0;
+                                            createRaffle = false;
+                                            break;
+                                        }
+                                        await bot.SendTextMessageAsync(chat.Id, "Установите картинку(необязательно, просто отправьте любой текст):");
+                                        break;
+                                    case 3:
+                                        if (message.Type == MessageType.Photo)
+                                        {
+                                            var photo = message.Photo[^1].FileId;
+                                            var imageData = await bot.GetFileAsync(photo);
+                                            using (var fileStream = new MemoryStream())
+                                            {
+                                                await bot.DownloadFileAsync(imageData.FilePath, fileStream);
+                                                fileStream.Position = 0;
+
+                                                imageDataArr = fileStream.ToArray();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            await bot.SendTextMessageAsync(chat.Id, "Вы отказались от картинки");
+                                        }
+                                        long id = await connection.SetIdRaffle();
+                                        await connection.GetRaffle(id, "Проводится", imageDataArr, raffleNames[0], raffleNames[1], dateEvent.AddDays(1));
+                                        await bot.SendTextMessageAsync(chat.Id, "Розыгрыш создан!");
+                                        Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
                                         count = 0;
                                         createRaffle = false;
                                         break;
-                                    }
-                                    await bot.SendTextMessageAsync(chat.Id, "Установите картинку(необязательно, просто отправьте любой текст):");
-                                    break;
-                                case 3:
-                                    if (message.Type == MessageType.Photo)
-                                    {
-                                        var photo = message.Photo[^1].FileId;
-                                        var imageData = await bot.GetFileAsync(photo);
-                                        using (var fileStream = new MemoryStream())
-                                        {
-                                            await bot.DownloadFileAsync(imageData.FilePath, fileStream);
-                                            fileStream.Position = 0;
-
-                                            imageDataArr = fileStream.ToArray();
-                                        }
-                                    }
-                                    else
-                                    {
-                                        await bot.SendTextMessageAsync(chat.Id, "Вы отказались от картинки");
-                                    }
-                                    long id = await connection.SetIdRaffle();
-                                    await connection.GetRaffle(id, "Проводится", imageDataArr, raffleNames[0], raffleNames[1], dateEvent);
-                                    await bot.SendTextMessageAsync(chat.Id, "Розыгрыш создан!");
-                                    Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
-                                    count = 0;
-                                    createRaffle = false;
-                                    break;
+                                }
+                                count++;
                             }
-                            count++;
                         }
                         if (editRaffle)
                         {
-                            Console.WriteLine("Проверка работы условия");
-                            switch (count)
+                            bool checkAdmin = await connection.CheckListAdmin(user.Id);
+                            if (checkAdmin)
                             {
-                                case 0:
-                                    await bot.SendTextMessageAsync(chat.Id, "Введите описание розыгрыша:");
-                                    raffleNames[count] = text;
-                                    break;
-                                case 1:
-                                    await bot.SendTextMessageAsync(chat.Id, "Введите время проведения розыгрыша:\n" +
-                                        "Пример: 01.01.2024 - день, месяц, год.");
-                                    raffleNames[count] = text;
-                                    break;
-                                case 2:
-                                    raffleNames[count] = text.Trim();
-                                    Console.WriteLine($"Проверка даты:{raffleNames[2]}");
+                                Console.WriteLine("Проверка работы условия");
+                                switch (count)
+                                {
+                                    case 0:
+                                        await bot.SendTextMessageAsync(chat.Id, "Введите описание розыгрыша:");
+                                        raffleNames[count] = text;
+                                        break;
+                                    case 1:
+                                        await bot.SendTextMessageAsync(chat.Id, "Введите время проведения розыгрыша:\n" +
+                                            "Пример: 01.01.2024 - день, месяц, год.");
+                                        raffleNames[count] = text;
+                                        break;
+                                    case 2:
+                                        raffleNames[count] = text.Trim();
+                                        Console.WriteLine($"Проверка даты:{raffleNames[2]}");
 
-                                    try
-                                    {
-                                        DateTime data = DateTime.ParseExact(raffleNames[2], "dd.MM.yyyy", null);
-                                        Console.WriteLine(data);
-                                        Console.WriteLine($"Проверка массива raffleNames: {raffleNames[2]}");
-                                        dateEvent = data.Date;
-                                        dateEvent.AddDays(1);
-                                    }
-                                    catch (FormatException)
-                                    {
-                                        await bot.SendTextMessageAsync(chat.Id, "Некорректный формат даты, обновление розыгрыша отменено");
+                                        try
+                                        {
+                                            DateTime data = DateTime.ParseExact(raffleNames[2], "dd.MM.yyyy", null);
+                                            Console.WriteLine(data);
+                                            Console.WriteLine($"Проверка массива raffleNames: {raffleNames[2]}");
+                                            dateEvent = data.Date;
+                                            dateEvent.AddDays(1);
+                                        }
+                                        catch (FormatException)
+                                        {
+                                            await bot.SendTextMessageAsync(chat.Id, "Некорректный формат даты, обновление розыгрыша отменено");
+                                            count = 0;
+                                            createRaffle = false;
+                                            break;
+                                        }
+                                        await bot.SendTextMessageAsync(chat.Id, "Установите картинку(необязательно, просто отправьте любой текст):");
+                                        break;
+                                    case 3:
+                                        if (message.Type == MessageType.Photo)
+                                        {
+                                            var photo = message.Photo[^1].FileId;
+                                            var imageData = await bot.GetFileAsync(photo);
+                                            using (var fileStream = new MemoryStream())
+                                            {
+                                                await bot.DownloadFileAsync(imageData.FilePath, fileStream);
+                                                fileStream.Position = 0;
+
+                                                imageDataArr = fileStream.ToArray();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            await bot.SendTextMessageAsync(chat.Id, "Вы отказались от картинки");
+                                        }
+                                        long id = await connection.SetIdRaffle();
+                                        await connection.EditRaffle(imageDataArr, raffleNames[0], raffleNames[1], dateEvent, intRaffleId);
+                                        await bot.SendTextMessageAsync(chat.Id, "Розыгрыш обновлён!");
+                                        Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
                                         count = 0;
                                         createRaffle = false;
                                         break;
-                                    }
-                                    await bot.SendTextMessageAsync(chat.Id, "Установите картинку(необязательно, просто отправьте любой текст):");
-                                    break;
-                                case 3:
-                                    if (message.Type == MessageType.Photo)
-                                    {
-                                        var photo = message.Photo[^1].FileId;
-                                        var imageData = await bot.GetFileAsync(photo);
-                                        using (var fileStream = new MemoryStream())
-                                        {
-                                            await bot.DownloadFileAsync(imageData.FilePath, fileStream);
-                                            fileStream.Position = 0;
-
-                                            imageDataArr = fileStream.ToArray();
-                                        }
-                                    }
-                                    else
-                                    {
-                                        await bot.SendTextMessageAsync(chat.Id, "Вы отказались от картинки");
-                                    }
-                                    long id = await connection.SetIdRaffle();
-                                    await connection.EditRaffle(imageDataArr ,raffleNames[0], raffleNames[1], dateEvent, intRaffleId);
-                                    await bot.SendTextMessageAsync(chat.Id, "Розыгрыш обновлён!");
-                                    Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
-                                    count = 0;
-                                    createRaffle = false;
-                                    break;
+                                }
+                                count++;
                             }
-                            count++;
                         }
                         switch (message.Type)
                         {
