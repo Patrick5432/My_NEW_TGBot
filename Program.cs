@@ -1,31 +1,28 @@
-﻿using Amazon.Runtime.Internal.Auth;
-using Microsoft.VisualBasic;
-using MongoDB.Bson.Serialization.Serializers;
-using MongoDB.Driver;
-using NewTGBot;
-using Newtonsoft.Json.Linq;
-using System.IO.Pipes;
+﻿using NewTGBot;
+using System;
 using System.Security.Cryptography.X509Certificates;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
-using Telegram.Bot.Requests;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
-using static System.Net.Mime.MediaTypeNames;
+using static NewTGBot.MongoConnection;
 
 class Program
 {
     private static string token = "7784841400:AAFjbVgO1xB9Vv3kN5ZSDMF6pPlJVP_Wjw0";
     private static ITelegramBotClient ? bot;
     private static ReceiverOptions ? receiverOptions;
+    private static Dictionary<long, Message>? userMessages = new Dictionary<long, Message>();
     private static InlineKeyboardMarkup ? question;
     private static InlineKeyboardMarkup ? adminPanel;
     private static InlineKeyboardMarkup ? rafflePanel;
     private static InlineKeyboardMarkup? adminRafflePanel;
-    private static int intRaffleId;
+    private static InlineKeyboardMarkup? backRafflePanel;
+    private static InlineKeyboardMarkup? backAdminRafflePanel;
+    private static InlineKeyboardMarkup? buttonsRaffles;
+    private static Dictionary<long, int> intRaffleId = new Dictionary<long, int>();
     private static byte[] imageDataArr;
     private static DateTime dateEvent;
     private static bool waitingAnswerUser = false;
@@ -78,6 +75,10 @@ class Program
             {
                 InlineKeyboardButton.WithCallbackData("Участвовать", "join_raffle"),
             },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Назад", "back")
+            }
         });
 
         adminRafflePanel = new InlineKeyboardMarkup(new List<InlineKeyboardButton[]>
@@ -90,6 +91,10 @@ class Program
             {
                 InlineKeyboardButton.WithCallbackData("Провести", "start_raffle"),
                 InlineKeyboardButton.WithCallbackData("Удалить розыгрыш", "delete_raffle"),
+            },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Назад", "back")
             }
         });
 
@@ -111,19 +116,9 @@ class Program
                         var message = update.Message;
                         var text = message.Text;
                         var chat = message.Chat;
-                        //Console.WriteLine(text);
-
                         var user = message.From;
+                        buttonsRaffles = await connection.GetButtonsRaffle();
                         Console.WriteLine($"Пришло сообщение от пользователя {user.Username} с Id: {user.Id}");
-                        /*var testPhoto = await bot.GetFileAsync(photo);
-                        using (var fileStream = new MemoryStream())
-                        {
-                            await bot.DownloadFileAsync(testPhoto.FilePath, fileStream);
-                            fileStream.Position = 0;
-
-                            byte[] imageData = fileStream.ToArray();
-                            Console.WriteLine(imageData);
-                        }*/
                         if (waitingAnswerUser)
                         {
                             bool checkAdmin = await connection.CheckListAdmin(user.Id);
@@ -290,7 +285,7 @@ class Program
                                             await bot.SendTextMessageAsync(chat.Id, "Вы отказались от картинки");
                                         }
                                         long id = await connection.SetIdRaffle();
-                                        await connection.EditRaffle(imageDataArr, raffleNames[0], raffleNames[1], dateEvent, intRaffleId);
+                                        await connection.EditRaffle(imageDataArr, raffleNames[0], raffleNames[1], dateEvent, intRaffleId[user.Id]);
                                         await bot.SendTextMessageAsync(chat.Id, "Розыгрыш обновлён!");
                                         Console.WriteLine($"{raffleNames[0]}\n{raffleNames[1]}");
                                         count = 0;
@@ -307,8 +302,7 @@ class Program
                                 {
                                     if (message.Text == "/start")
                                     {
-                                        Message msg = await bot.SendTextMessageAsync(chat.Id, "Привет");
-                                        InlineKeyboardMarkup buttonsRaffles = await connection.GetButtonsRaffle();
+                                        await bot.SendTextMessageAsync(chat.Id, "Привет");
                                         bool check = await connection.CheckAdmins();
                                         bool isAdmin = await connection.CheckListAdmin(user.Id);
                                         long checkRaffle = await connection.SetIdRaffle();
@@ -318,18 +312,19 @@ class Program
                                         }
                                         else
                                         {
-                                            await bot.SendTextMessageAsync(chat.Id, "Выберите розыгрыш", replyMarkup: buttonsRaffles);
+                                           Message updateMessage = await bot.SendTextMessageAsync(chat.Id, "Выберите розыгрыш", replyMarkup: buttonsRaffles);
+                                           userMessages[user.Id] = updateMessage;
                                         }
                                         if (check != true)
                                         {
                                             await bot.SendTextMessageAsync(chat.Id, "На данный момент у меня нет администратора");
-                                            msg = await bot.SendTextMessageAsync(chat.Id, "Хотите стать администратором?", replyMarkup: question);
+                                            await bot.SendTextMessageAsync(chat.Id, "Хотите стать администратором?", replyMarkup: question);
                                         }
                                         else if (isAdmin == true)
                                         {
                                             await bot.SendTextMessageAsync(chat.Id, "Меню администратора:", replyMarkup: adminPanel);
                                         }
-                                        
+
                                         return;
                                     }
                                     return;
@@ -348,7 +343,8 @@ class Program
                         string checkTypeCallback = callbackQuery.Data;
                         if (int.TryParse(checkTypeCallback, out int intCallbackQuery))
                         {
-                            intRaffleId = intCallbackQuery;
+                            int int1RaffleId = intCallbackQuery;
+                            intRaffleId[user.Id] = int1RaffleId;
                         }
                         string raffleId = callbackQuery.Data;
                         if (long.TryParse(raffleId, out var result))
@@ -379,13 +375,13 @@ class Program
                                     switch (checkAdminRaffle)
                                     {
                                         case true:
-                                            await bot.SendTextMessageAsync(chat.Id, caption,
+                                            await bot.EditMessageTextAsync(chat.Id, userMessages[user.Id].MessageId,caption,
                                                 replyMarkup: adminRafflePanel,
                                                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
                                             break;
                                         case false:
                                             longRaffleId = result;
-                                            await bot.SendTextMessageAsync(chat.Id, caption,
+                                            await bot.EditMessageTextAsync(chat.Id, userMessages[user.Id].MessageId, caption,
                                                 replyMarkup: rafflePanel,
                                                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
                                             break;
@@ -414,6 +410,11 @@ class Program
                             case "no":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
                                 await bot.SendTextMessageAsync(chat.Id, "Ожидайте когда появиться администратор");
+                                break;
+                            case "back":
+                                await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
+                                buttonsRaffles = await connection.GetButtonsRaffle();
+                                await bot.EditMessageTextAsync(chat.Id, userMessages[user.Id].MessageId, "Выберите розыгрыш", replyMarkup: buttonsRaffles);
                                 break;
                             case "create_raffle":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
@@ -480,13 +481,13 @@ class Program
                                 break;
                             case "start_raffle":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
-                                Console.WriteLine($"Сейчас проводиться розыгрыш с id: {intRaffleId}");
-                                int ranUser = await connection.GetRandomNumberInUsers(intRaffleId);
+                                Console.WriteLine($"Сейчас проводиться розыгрыш с id: {intRaffleId[user.Id]}");
+                                int ranUser = await connection.GetRandomNumberInUsers(intRaffleId[user.Id]);
                                 Console.WriteLine("Проверка на изменение айди: " + intRaffleId);
-                                var strRanUser = await connection.GetRandomUser(ranUser, intRaffleId);
+                                var strRanUser = await connection.GetRandomUser(ranUser, intRaffleId[user.Id]);
                                 if (strRanUser != "")
                                 {
-                                    await connection.UpdateRaffleWinnerAndStatus(strRanUser, intRaffleId);
+                                    await connection.UpdateRaffleWinnerAndStatus(strRanUser, intRaffleId[user.Id]);
                                     await bot.SendTextMessageAsync(chat.Id, $"Добавлен победитель в розыгрыш!\nПобедитель: {strRanUser}");
                                 }
                                 else
@@ -496,7 +497,7 @@ class Program
                                 break;
                             case "delete_raffle":
                                 await bot.AnswerCallbackQueryAsync(callbackQuery.Id);
-                                await connection.DeleteRaffleAndReassignIds(intRaffleId);
+                                await connection.DeleteRaffleAndReassignIds(intRaffleId[user.Id]);
                                 await bot.SendTextMessageAsync(chat.Id, "Розыгрыш удалён");
                                 break;
                         }

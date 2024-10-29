@@ -1,15 +1,6 @@
-﻿using Amazon.Runtime.Internal.Auth;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Serializers;
+﻿using MongoDB.Bson;
 using MongoDB.Driver;
-using MongoDB.Driver.Core.Misc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Telegram.Bot.Types.ReplyMarkups;
-using static NewTGBot.MongoConnection;
 
 namespace NewTGBot
 {
@@ -19,13 +10,20 @@ namespace NewTGBot
         private static IMongoDatabase? db;
         public async Task MongoUpdate()
         {
-            Console.WriteLine("База данных работает");
-            db = client.GetDatabase("telegram_bot");
-            await db.CreateCollectionAsync("users");
-            await db.CreateCollectionAsync("admins");
-            await db.CreateCollectionAsync("raffles");
-            await db.CreateCollectionAsync("users_in_raffle");
-            await CheckDataRaffle();
+            try
+            {
+                Console.WriteLine("База данных работает");
+                db = client.GetDatabase("telegram_bot");
+                await db.CreateCollectionAsync("users");
+                await db.CreateCollectionAsync("admins");
+                await db.CreateCollectionAsync("raffles");
+                await db.CreateCollectionAsync("users_in_raffle");
+                await CheckDataRaffle();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex}");
+            }
         }
 
         public async Task GetAdmin(long userId)
